@@ -1,0 +1,142 @@
+﻿@model IReadOnlyList<Role>
+@{
+    ViewData["Title"] = "Rol Yönetimi";
+    var permissions = (IReadOnlyList<Permission>)ViewBag.Permissions;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <button type="button" class="btn btn-primary btn-sm" onclick='openCreateModal()'>
+        <i class="bi bi-plus-lg"></i> Yeni Rol Ekle
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Rol Adı</th>
+                    <th style="width: 160px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="2" class="text-center text-muted py-4">Henüz rol eklenmemiş.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick='openEditModal(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Name)))'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick='confirmDelete(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Name)))'>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Ekle/Düzenle Modal -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="roleForm" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="roleModalTitle">Yeni Rol Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="roleId" />
+                    <div class="mb-3">
+                        <label class="form-label">Rol Adı</label>
+                        <input type="text" name="name" id="roleName" class="form-control" required maxlength="50" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">İzinler</label>
+                        <div id="permissionCheckboxes">
+                            @foreach (var p in permissions)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input permission-checkbox" type="checkbox" name="permissionIds" value="@p.Id" id="perm_@p.Id">
+                                    <label class="form-check-label" for="perm_@p.Id">@p.Name</label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="deleteForm" method="post" style="display:none;"></form>
+
+@section Scripts {
+    <script>
+        const roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
+
+        function clearCheckboxes() {
+            document.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+        }
+
+        function openCreateModal() {
+            document.getElementById('roleModalTitle').innerText = 'Yeni Rol Ekle';
+            document.getElementById('roleForm').action = '@Url.Action("Create", "Role")';
+            document.getElementById('roleId').value = '';
+            document.getElementById('roleName').value = '';
+            clearCheckboxes();
+            roleModal.show();
+        }
+
+        async function openEditModal(id, name) {
+            document.getElementById('roleModalTitle').innerText = 'Rolü Düzenle';
+            document.getElementById('roleForm').action = '@Url.Action("Edit", "Role")';
+            document.getElementById('roleId').value = id;
+            document.getElementById('roleName').value = name;
+            clearCheckboxes();
+
+            const response = await fetch('@Url.Action("GetPermissions", "Role")?roleId=' + id);
+            const permissionIds = await response.json();
+            permissionIds.forEach(pid => {
+                const cb = document.getElementById('perm_' + pid);
+                if (cb) cb.checked = true;
+            });
+
+            roleModal.show();
+        }
+
+        function confirmDelete(id, name) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${name}" rolü silinecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, sil',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('deleteForm');
+                    form.action = '@Url.Action("Delete", "Role")/' + id;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,240 @@
+﻿@model IReadOnlyList<ProjectListDto>
+@{
+    ViewData["Title"] = "Projeler";
+    bool? currentFilter = ViewData["CurrentFilter"] as bool?;
+    var companies = (IReadOnlyList<Company>)ViewBag.Companies;
+    var currencies = (IReadOnlyList<Currency>)ViewBag.Currencies;
+}
+
+<div class="mb-2">
+    <input type="text" id="projectSearchInput" class="form-control form-control-sm" placeholder="Proje kodu veya firma adına göre ara...">
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <a class="btn @(currentFilter == null ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = (bool?)null })">Tümü</a>
+            <a class="btn @(currentFilter == true ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = true })">Aktif</a>
+            <a class="btn @(currentFilter == false ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = false })">Pasif</a>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+            <i class="bi bi-plus-lg"></i> Yeni Proje Ekle
+        </button>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 120px;">Proje Kodu</th>
+                    <th>Firma</th>
+                    <th>Teklif Tutarı</th>
+                    <th>Başlangıç</th>
+                    <th style="width: 90px;">Durum</th>
+                    <th style="width: 160px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+                <tbody id="projectTableBody">
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                        foreach (var item in Model)
+                        {
+                            <tr data-search-row data-search-text="@($"{item.ProjectCode} {item.CompanyName}".ToLower())">
+                                <td><span class="badge bg-secondary">@item.ProjectCode</span></td>
+                            <td>@item.CompanyName</td>
+                            <td>
+                                @if (item.OfferAmount.HasValue)
+                                {
+                                    @($"{item.OfferAmount:N2} {item.CurrencyCode}")
+                                }
+                                else
+                                {
+                                    <text>-</text>
+                                }
+                            </td>
+                            <td>@(item.StartDate?.ToString("dd.MM.yyyy") ?? "-")</td>
+                            <td>
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge bg-success">Aktif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Pasif</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick='openEditModal(@item.Id)'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                @if (item.IsActive)
+                                {
+                                    <button type="button" class="btn btn-outline-warning btn-sm"onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.ProjectCode)), false)'>
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.ProjectCode)), true)'>
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="projectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="projectForm" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="projectModalTitle">Yeni Proje Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="projectId" />
+                    <div class="mb-3">
+                        <label class="form-label">Proje Kodu</label>
+                        <input type="text" name="projectCode" id="projectCode" class="form-control" required maxlength="20" style="text-transform: uppercase;" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Firma</label>
+                        <select name="companyId" id="projectCompanyId" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            @foreach (var c in companies)
+                            {
+                                <option value="@c.Id">@c.CompanyName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Teklif Tutarı</label>
+                        <input type="number" step="0.01" name="offerAmount" id="projectOfferAmount" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Para Birimi</label>
+                        <select name="currencyId" id="projectCurrencyId" class="form-select" onchange="handleCurrencyChange()">
+                            <option value="">Seçiniz</option>
+                            @foreach (var c in currencies)
+                            {
+                                <option value="@c.Id" data-code="@c.Code">@c.Code - @c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kur</label>
+                        <input type="number" step="0.0001" name="exchangeRate" id="projectExchangeRate" class="form-control" />
+                        <div class="form-text">Para birimi TRY seçilirse kur otomatik 1 olarak ayarlanır.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Başlangıç Tarihi</label>
+                        <input type="date" name="startDate" id="projectStartDate" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <textarea name="description" id="projectDescription" class="form-control" rows="2" maxlength="250"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="toggleForm" method="post" style="display:none;">
+    <input type="hidden" name="isActive" id="toggleIsActive" />
+</form>
+
+@section Scripts {
+    <script>
+        enableLiveSearch('projectSearchInput', 'projectTableBody');
+        const projectModal = new bootstrap.Modal(document.getElementById('projectModal'));
+
+        function openCreateModal() {
+            document.getElementById('projectModalTitle').innerText = 'Yeni Proje Ekle';
+            document.getElementById('projectForm').action = '@Url.Action("Create", "Project")';
+            document.getElementById('projectForm').reset();
+            document.getElementById('projectId').value = '';
+            projectModal.show();
+        }
+
+        async function openEditModal(id) {
+            const response = await fetch('@Url.Action("GetDetail", "Project")?id=' + id);
+            if (!response.ok) {
+                Swal.fire({ icon: 'error', title: 'Hata', text: 'Proje bilgisi alınamadı.' });
+                return;
+            }
+            const project = await response.json();
+
+            document.getElementById('projectModalTitle').innerText = 'Projeyi Düzenle';
+            document.getElementById('projectForm').action = '@Url.Action("Edit", "Project")';
+            document.getElementById('projectId').value = project.id;
+            document.getElementById('projectCode').value = project.projectCode;
+            document.getElementById('projectCompanyId').value = project.companyId;
+            document.getElementById('projectOfferAmount').value = project.offerAmount ?? '';
+            document.getElementById('projectCurrencyId').value = project.currencyId ?? '';
+            document.getElementById('projectExchangeRate').value = project.exchangeRate ?? '';
+            document.getElementById('projectStartDate').value = project.startDate ?? '';
+            document.getElementById('projectDescription').value = project.description ?? '';
+            projectModal.show();
+        }
+
+        function handleCurrencyChange() {
+            const select = document.getElementById('projectCurrencyId');
+            const selectedOption = select.options[select.selectedIndex];
+            const code = selectedOption ? selectedOption.getAttribute('data-code') : null;
+            if (code === 'TRY') {
+                document.getElementById('projectExchangeRate').value = 1;
+            }
+        }
+
+        function confirmToggle(id, code, makeActive) {
+            const actionText = makeActive ? 'aktif' : 'pasif';
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${code}" projesi ${actionText} hale getirilecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, devam et',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: makeActive ? '#2f6f4f' : '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('toggleForm');
+                    form.action = '@Url.Action("ToggleActive", "Project")/' + id;
+                    document.getElementById('toggleIsActive').value = makeActive;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

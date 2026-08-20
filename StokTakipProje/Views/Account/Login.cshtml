@@ -1,0 +1,209 @@
+﻿@{
+    Layout = null;
+    ViewData["Title"] = "Giriş Yap";
+    string? errorMessage = ViewData["ErrorMessage"] as string;
+    string? returnUrl = ViewData["ReturnUrl"] as string;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giriş Yap - StokTakip</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            background: linear-gradient(135deg, #16241d 0%, #1c2b24 45%, #2f6f4f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Segoe UI", system-ui, sans-serif;
+            position: relative;
+            overflow: hidden;
+            padding: 1.5rem;
+        }
+
+        /* Dekoratif bulanık daireler */
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .35;
+            z-index: 0;
+        }
+
+        .blob-1 {
+            width: 380px;
+            height: 380px;
+            background: #4a9d6f;
+            top: -100px;
+            left: -100px;
+        }
+
+        .blob-2 {
+            width: 320px;
+            height: 320px;
+            background: #e0a94a;
+            bottom: -80px;
+            right: -80px;
+        }
+
+        .blob-3 {
+            width: 260px;
+            height: 260px;
+            background: #4a90c4;
+            top: 40%;
+            right: 10%;
+            opacity: .2;
+        }
+
+        .login-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 860px;
+        }
+
+        .login-shell {
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,.35);
+        }
+
+        .login-brand-panel {
+            background: rgba(255,255,255,.06);
+            backdrop-filter: blur(10px);
+            color: #eafaf1;
+            padding: 2.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+            .login-brand-panel .brand-title {
+                font-size: 1.6rem;
+                font-weight: 700;
+            }
+
+            .login-brand-panel .brand-icon {
+                font-size: 2.4rem;
+                color: #7cd3a0;
+            }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: .7rem;
+            margin-top: 1.1rem;
+        }
+
+            .feature-item i {
+                font-size: 1.15rem;
+                color: #7cd3a0;
+                margin-top: .1rem;
+            }
+
+            .feature-item .feature-text-title {
+                font-weight: 600;
+                font-size: .92rem;
+            }
+
+            .feature-item .feature-text-desc {
+                font-size: .78rem;
+                color: rgba(234,250,241,.7);
+            }
+
+        .login-form-panel {
+            background: #ffffff;
+            padding: 2.5rem 2.2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .login-form-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1f4d36;
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <div class="login-wrapper">
+        <div class="row g-0 login-shell">
+            <div class="col-md-6 login-brand-panel">
+                <i class="bi bi-boxes brand-icon"></i>
+                <div class="brand-title mt-2">StokTakip</div>
+                <div class="small mt-1" style="color: rgba(234,250,241,.75);">
+                    Proje bazlı stok ve malzeme takip sistemi
+                </div>
+
+                <div class="feature-item">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <div>
+                        <div class="feature-text-title">Canlı Dashboard</div>
+                        <div class="feature-text-desc">Stok durumunu ve son hareketleri tek ekranda izleyin.</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-arrow-left-right"></i>
+                    <div>
+                        <div class="feature-text-title">Stok Giriş / Çıkış</div>
+                        <div class="feature-text-desc">Lot bazlı, FIFO destekli stok hareket takibi.</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <div>
+                        <div class="feature-text-title">Raporlama</div>
+                        <div class="feature-text-desc">Excel, PDF ve yazdırma destekli detaylı raporlar.</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-shield-lock"></i>
+                    <div>
+                        <div class="feature-text-title">Güvenli Erişim</div>
+                        <div class="feature-text-desc">Kullanıcı bazlı, şifrelenmiş giriş sistemi.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 login-form-panel">
+                <div class="login-form-title mb-1">Hoş Geldiniz</div>
+                <div class="text-muted small mb-4">Devam etmek için hesabınızla giriş yapın</div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger py-2 small">@errorMessage</div>
+                }
+
+                <form method="post" asp-action="Login" asp-route-returnUrl="@returnUrl">
+                    <div class="mb-3">
+                        <label class="form-label">Kullanıcı Adı</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                            <input type="text" name="username" class="form-control" required autofocus />
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Şifre</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                            <input type="password" name="password" class="form-control" required />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 py-2">
+                        <i class="bi bi-box-arrow-in-right"></i> Giriş Yap
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

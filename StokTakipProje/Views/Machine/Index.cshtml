@@ -1,0 +1,200 @@
+﻿@model IReadOnlyList<Machine>
+@{
+    ViewData["Title"] = "Makinalar";
+    bool? currentFilter = ViewData["CurrentFilter"] as bool?;
+    var projects = (IReadOnlyList<ProjectListDto>)ViewBag.Projects;
+}
+
+<div class="mb-2">
+    <input type="text" id="machineSearchInput" class="form-control form-control-sm" placeholder="Makina kodu veya adına göre ara...">
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <a class="btn @(currentFilter == null ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = (bool?)null })">Tümü</a>
+            <a class="btn @(currentFilter == true ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = true })">Aktif</a>
+            <a class="btn @(currentFilter == false ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = false })">Pasif</a>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+            <i class="bi bi-plus-lg"></i> Yeni Makina Ekle
+        </button>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 160px;">Kod</th>
+                    <th>Ad</th>
+                    <th style="width: 90px;">Durum</th>
+                    <th style="width: 160px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="machineTableBody">
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                        foreach (var item in Model)
+                        {
+                         <tr data-search-row data-search-text="@($"{item.Code} {item.Name}".ToLower())">
+                         <td><span class="badge bg-secondary">@item.Code</span></td>
+                            <td>@item.Name</td>
+                            <td>
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge bg-success">Aktif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Pasif</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick='openEditModal(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Name)))'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                @if (item.IsActive)
+                                {
+                                    <button type="button" class="btn btn-outline-warning btn-sm" onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Name)), false)'>
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Name)), true)'>
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Yeni Ekle Modal (Proje seçimi zorunlu, kod otomatik üretilecek) -->
+<div class="modal fade" id="createMachineModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="createMachineForm" method="post" action="@Url.Action("Create", "Machine")">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Makina Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Proje</label>
+                        <select name="projectId" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            @foreach (var p in projects)
+                            {
+                                <option value="@p.Id">@p.ProjectCode - @p.CompanyName</option>
+                            }
+                        </select>
+                        <div class="form-text">Makina kodu, seçilen projeye göre otomatik oluşturulur.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Makina Adı</label>
+                        <input type="text" name="name" class="form-control" required maxlength="100" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Düzenle Modal (sadece ad değişebilir, kod sabit) -->
+<div class="modal fade" id="editMachineModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="editMachineForm" method="post" action="@Url.Action("Edit", "Machine")">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Makinayı Düzenle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="editMachineId" />
+                    <div class="mb-3">
+                        <label class="form-label">Makina Adı</label>
+                        <input type="text" name="name" id="editMachineName" class="form-control" required maxlength="100" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="toggleForm" method="post" style="display:none;">
+    <input type="hidden" name="isActive" id="toggleIsActive" />
+</form>
+
+@section Scripts {
+    <script>
+
+        enableLiveSearch('machineSearchInput', 'machineTableBody');
+        const createMachineModal = new bootstrap.Modal(document.getElementById('createMachineModal'));
+        const editMachineModal = new bootstrap.Modal(document.getElementById('editMachineModal'));
+
+        function openCreateModal() {
+            document.getElementById('createMachineForm').reset();
+            createMachineModal.show();
+        }
+
+        function openEditModal(id, name) {
+            document.getElementById('editMachineId').value = id;
+            document.getElementById('editMachineName').value = name;
+            editMachineModal.show();
+        }
+
+        function confirmToggle(id, name, makeActive) {
+            const actionText = makeActive ? 'aktif' : 'pasif';
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${name}" makinası ${actionText} hale getirilecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, devam et',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: makeActive ? '#2f6f4f' : '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('toggleForm');
+                    form.action = '@Url.Action("ToggleActive", "Machine")/' + id;
+                    document.getElementById('toggleIsActive').value = makeActive;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

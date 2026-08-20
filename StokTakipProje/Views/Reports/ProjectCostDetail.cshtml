@@ -1,0 +1,93 @@
+﻿@{
+    ViewData["Title"] = "Proje Maliyet Detayı";
+    ProjectCostDto summary = ViewBag.Summary;
+    var detail = (IReadOnlyList<ProjectCostDetailDto>)ViewBag.Detail;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="mb-0">@summary.ProjectCode - @summary.CompanyName</h5>
+        <a href="@Url.Action("ProjectCost")" class="small no-print"><i class="bi bi-arrow-left"></i> Rapor listesine dön</a>
+    </div>
+    <div class="d-flex gap-2 no-print">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportProjectCostPdf", new { projectId = summary.ProjectId })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("ExportProjectCost", new { projectId = summary.ProjectId })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small">Teklif Tutarı (TL)</div>
+                <div class="fs-5 fw-bold">@(summary.OfferAmountTry?.ToString("N2") ?? "-")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small">Gerçekleşen Malzeme Maliyeti (TL)</div>
+                <div class="fs-5 fw-bold">@summary.TotalIssueCostTry.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 @(summary.EstimatedProfitTry is >= 0 ? "border-success" : "border-danger")">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small">Tahmini Kâr/Zarar (TL)</div>
+                <div class="fs-5 fw-bold @(summary.EstimatedProfitTry is >= 0 ? "text-success" : "text-danger")">
+                    @(summary.EstimatedProfitTry?.ToString("N2") ?? "-")
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Makina</th>
+                    <th>Ürün</th>
+                    <th>Mal Kabul No</th>
+                    <th class="text-end">Miktar</th>
+                    <th class="text-end">Birim Fiyat (TL)</th>
+                    <th class="text-end">Tutar (TL)</th>
+                    <th>Tarih</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (detail is null || detail.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Bu projeye ait malzeme çıkışı bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var d in detail)
+                    {
+                        <tr>
+                            <td>@d.MachineCode - @d.MachineName</td>
+                            <td>@(d.ProductCode is not null ? $"{d.ProductCode} - {d.ProductName}" : "-")</td>
+                            <td>@(d.GoodsReceiptNo ?? "-")</td>
+                            <td class="text-end">@(d.Quantity?.ToString("N2") ?? "-")</td>
+                            <td class="text-end">@(d.UnitPrice?.ToString("N2") ?? "-")</td>
+                            <td class="text-end">@(d.AmountTry?.ToString("N2") ?? "-")</td>
+                            <td>@(d.Date?.ToString("dd.MM.yyyy") ?? "-")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

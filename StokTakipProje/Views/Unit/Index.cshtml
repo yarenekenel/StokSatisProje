@@ -1,0 +1,131 @@
+﻿@model IReadOnlyList<Unit>
+@{
+    ViewData["Title"] = "Birimler";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+        <i class="bi bi-plus-lg"></i> Yeni Birim Ekle
+    </button>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf")">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export")">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Ad</th>
+                    <th style="width: 140px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-4">Henüz birim eklenmemiş.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="openEditModal(@item.Id, '@item.Name')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="confirmDelete(@item.Id, '@item.Name')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Ekle/Düzenle Modal -->
+<div class="modal fade" id="unitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="unitForm" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="unitModalTitle">Yeni Birim Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="unitId" />
+                    <div class="mb-3">
+                        <label class="form-label">Birim Adı</label>
+                        <input type="text" name="name" id="unitName" class="form-control" required maxlength="50" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Silme Formu (görünmez, SweetAlert2 onayından sonra submit edilir) -->
+<form id="deleteForm" method="post" style="display:none;"></form>
+
+@section Scripts {
+    <script>
+        const unitModal = new bootstrap.Modal(document.getElementById('unitModal'));
+
+        function openCreateModal() {
+            document.getElementById('unitModalTitle').innerText = 'Yeni Birim Ekle';
+            document.getElementById('unitForm').action = '@Url.Action("Create", "Unit")';
+            document.getElementById('unitId').value = '';
+            document.getElementById('unitName').value = '';
+            unitModal.show();
+        }
+
+        function openEditModal(id, name) {
+            document.getElementById('unitModalTitle').innerText = 'Birimi Düzenle';
+            document.getElementById('unitForm').action = '@Url.Action("Edit", "Unit")';
+            document.getElementById('unitId').value = id;
+            document.getElementById('unitName').value = name;
+            unitModal.show();
+        }
+
+        function confirmDelete(id, name) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${name}" birimi silinecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, sil',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('deleteForm');
+                    form.action = '@Url.Action("Delete", "Unit")/' + id;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

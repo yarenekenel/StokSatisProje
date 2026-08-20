@@ -1,0 +1,11 @@
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\bin\Debug\net8.0\StokTakip.Core.deps.json
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\bin\Debug\net8.0\StokTakip.Core.dll
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\bin\Debug\net8.0\StokTakip.Core.pdb
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\StokTakip.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\StokTakip.Core.AssemblyInfoInputs.cache
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\StokTakip.Core.AssemblyInfo.cs
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\StokTakip.Core.csproj.CoreCompileInputs.cache
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\StokTakip.Core.dll
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\refint\StokTakip.Core.dll
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\StokTakip.Core.pdb
+C:\Users\Berkay Özenel\source\repos\StokSatisProject\StokTakip.Core\obj\Debug\net8.0\ref\StokTakip.Core.dll

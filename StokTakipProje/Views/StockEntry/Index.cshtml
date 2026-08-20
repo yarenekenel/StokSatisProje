@@ -1,0 +1,242 @@
+﻿@model IReadOnlyList<StockEntryListDto>
+@{
+    ViewData["Title"] = "Stok Girişi";
+    var products = (IReadOnlyList<ProductLookupDto>)ViewBag.Products;
+    var companies = (IReadOnlyList<Company>)ViewBag.Companies;
+    var currencies = (IReadOnlyList<Currency>)ViewBag.Currencies;
+}
+
+<div class="mb-2">
+    <input type="text" id="stockEntrySearchInput" class="form-control form-control-sm" placeholder="Ürün, firma veya mal kabul no'ya göre ara...">
+</div>
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+        <i class="bi bi-plus-lg"></i> Yeni Stok Girişi
+    </button>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf")">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export")">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Ürün</th>
+                    <th>Firma</th>
+                    <th>Mal Kabul No</th>
+                    <th>Miktar</th>
+                    <th>Birim Fiyat</th>
+                    <th>Tutar (TL)</th>
+                    <th>Tarih</th>
+                    <th style="width: 100px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="stockEntryTableBody">
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                    <tr data-search-row data-search-text="@($"{item.ProductCode} {item.ProductName} {item.CompanyName} {item.GoodsReceiptNo}".ToLower())">
+                            <td>@item.ProductCode - @item.ProductName</td>
+                            <td>@(item.CompanyName ?? "-")</td>
+                            <td>@(item.GoodsReceiptNo ?? "-")</td>
+                            <td>@item.Quantity.ToString("N2")</td>
+                            <td>@item.UnitPrice.ToString("N2") @item.CurrencyCode</td>
+                            <td>@item.AmountTry.ToString("N2")</td>
+                            <td>@item.Date.ToString("dd.MM.yyyy")</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openEditModal(@item.Id)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick='confirmDelete(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.ProductName)))'>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="stockEntryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="stockEntryForm" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="stockEntryModalTitle">Yeni Stok Girişi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="stockEntryId" />
+                    <div class="mb-3">
+                        <label class="form-label">Ürün</label>
+                        <select name="productId" id="stockEntryProductId" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            @foreach (var p in products)
+                            {
+                                <option value="@p.Id">@p.Code - @p.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Firma</label>
+                        <select name="companyId" id="stockEntryCompanyId" class="form-select">
+                            <option value="">Seçiniz</option>
+                            @foreach (var c in companies)
+                            {
+                                <option value="@c.Id">@c.CompanyName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Fatura No</label>
+                            <input type="text" name="invoiceNo" id="stockEntryInvoiceNo" class="form-control" maxlength="50" />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Mal Kabul No</label>
+                            <input type="text" name="goodsReceiptNo" id="stockEntryGoodsReceiptNo" class="form-control" maxlength="50" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mal Kabul Yapan</label>
+                        <input type="text" name="receivedBy" id="stockEntryReceivedBy" class="form-control" maxlength="100" />
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Miktar</label>
+                            <input type="number" step="0.01" name="quantity" id="stockEntryQuantity" class="form-control" required />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Birim Fiyat</label>
+                            <input type="number" step="0.01" name="unitPrice" id="stockEntryUnitPrice" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Para Birimi</label>
+                            <select name="currencyId" id="stockEntryCurrencyId" class="form-select" required onchange="handleCurrencyChange()">
+                                <option value="">Seçiniz</option>
+                                @foreach (var c in currencies)
+                                {
+                                    <option value="@c.Id" data-code="@c.Code">@c.Code</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Kur</label>
+                            <input type="number" step="0.0001" name="exchangeRate" id="stockEntryExchangeRate" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tarih</label>
+                        <input type="date" name="date" id="stockEntryDate" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <textarea name="description" id="stockEntryDescription" class="form-control" rows="2" maxlength="250"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="deleteForm" method="post" style="display:none;"></form>
+
+@section Scripts {
+    <script>
+        enableLiveSearch('stockEntrySearchInput', 'stockEntryTableBody');
+        const stockEntryModal = new bootstrap.Modal(document.getElementById('stockEntryModal'));
+
+        function todayIso() {
+            const d = new Date();
+            return d.toISOString().split('T')[0];
+        }
+
+        function openCreateModal() {
+            document.getElementById('stockEntryModalTitle').innerText = 'Yeni Stok Girişi';
+            document.getElementById('stockEntryForm').action = '@Url.Action("Create", "StockEntry")';
+            document.getElementById('stockEntryForm').reset();
+            document.getElementById('stockEntryId').value = '';
+            document.getElementById('stockEntryDate').value = todayIso();
+            stockEntryModal.show();
+        }
+
+        async function openEditModal(id) {
+            const response = await fetch('@Url.Action("GetDetail", "StockEntry")?id=' + id);
+            if (!response.ok) {
+                Swal.fire({ icon: 'error', title: 'Hata', text: 'Kayıt bilgisi alınamadı.' });
+                return;
+            }
+            const entry = await response.json();
+
+            document.getElementById('stockEntryModalTitle').innerText = 'Stok Girişini Düzenle';
+            document.getElementById('stockEntryForm').action = '@Url.Action("Edit", "StockEntry")';
+            document.getElementById('stockEntryId').value = entry.id;
+            document.getElementById('stockEntryProductId').value = entry.productId;
+            document.getElementById('stockEntryCompanyId').value = entry.companyId ?? '';
+            document.getElementById('stockEntryInvoiceNo').value = entry.invoiceNo ?? '';
+            document.getElementById('stockEntryGoodsReceiptNo').value = entry.goodsReceiptNo ?? '';
+            document.getElementById('stockEntryReceivedBy').value = entry.receivedBy ?? '';
+            document.getElementById('stockEntryQuantity').value = entry.quantity;
+            document.getElementById('stockEntryUnitPrice').value = entry.unitPrice;
+            document.getElementById('stockEntryCurrencyId').value = entry.currencyId;
+            document.getElementById('stockEntryExchangeRate').value = entry.exchangeRate;
+            document.getElementById('stockEntryDate').value = entry.date;
+            document.getElementById('stockEntryDescription').value = entry.description ?? '';
+            stockEntryModal.show();
+        }
+
+        function handleCurrencyChange() {
+            const select = document.getElementById('stockEntryCurrencyId');
+            const selectedOption = select.options[select.selectedIndex];
+            const code = selectedOption ? selectedOption.getAttribute('data-code') : null;
+            if (code === 'TRY') {
+                document.getElementById('stockEntryExchangeRate').value = 1;
+            }
+        }
+
+        function confirmDelete(id, productName) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${productName}" için yapılan stok girişi silinecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, sil',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('deleteForm');
+                    form.action = '@Url.Action("Delete", "StockEntry")/' + id;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,147 @@
+﻿@model IReadOnlyList<ProjectCostDto>
+@{
+    ViewData["Title"] = "Proje Maliyet Raporu";
+    var projects = (IReadOnlyList<ProjectListDto>)ViewBag.Projects;
+    var companies = (IReadOnlyList<Company>)ViewBag.Companies;
+    var products = (IReadOnlyList<ProductLookupDto>)ViewBag.Products;
+
+    int? selectedProjectId = ViewData["ProjectId"] as int?;
+    int? selectedCompanyId = ViewData["CompanyId"] as int?;
+    int? selectedProductId = ViewData["ProductId"] as int?;
+    DateTime? dateFrom = ViewData["DateFrom"] as DateTime?;
+    DateTime? dateTo = ViewData["DateTo"] as DateTime?;
+}
+<div class="d-flex justify-content-end align-items-center mb-2">
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportProjectCostPdf", new { projectId = selectedProjectId, companyId = selectedCompanyId, productId = selectedProductId, dateFrom, dateTo })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("ExportProjectCost", new { projectId = selectedProjectId, companyId = selectedCompanyId, productId = selectedProductId, dateFrom, dateTo })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3 no-print">
+    <div class="card-body py-3">
+        <form method="get">
+            <div class="row g-3">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Proje</label>
+                    <select name="projectId" class="form-select form-select-sm">
+                        <option value="">Tümü</option>
+                        @foreach (var p in projects)
+                        {
+                            if (selectedProjectId == p.Id)
+                            {
+                                <option value="@p.Id" selected>@p.ProjectCode - @p.CompanyName</option>
+                            }
+                            else
+                            {
+                                <option value="@p.Id">@p.ProjectCode - @p.CompanyName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Firma</label>
+                    <select name="companyId" class="form-select form-select-sm">
+                        <option value="">Tümü</option>
+                        @foreach (var c in companies)
+                        {
+                            if (selectedCompanyId == c.Id)
+                            {
+                                <option value="@c.Id" selected>@c.CompanyName</option>
+                            }
+                            else
+                            {
+                                <option value="@c.Id">@c.CompanyName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Ürün</label>
+                    <select name="productId" class="form-select form-select-sm">
+                        <option value="">Tümü</option>
+                        @foreach (var p in products)
+                        {
+                            if (selectedProductId == p.Id)
+                            {
+                                <option value="@p.Id" selected>@p.Code - @p.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@p.Id">@p.Code - @p.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Başlangıç Tarihi</label>
+                    <input type="date" name="dateFrom" class="form-control form-control-sm" value="@(dateFrom?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">Bitiş Tarihi</label>
+                    <input type="date" name="dateTo" class="form-control form-control-sm" value="@(dateTo?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-12 col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-search"></i> Ara
+                    </button>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-12 text-end">
+                    <a href="@Url.Action("ProjectCost")" class="btn btn-outline-secondary btn-sm">Temizle</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Proje</th>
+                    <th>Firma</th>
+                    <th class="text-end">Teklif (TL)</th>
+                    <th class="text-end">Sarf (TL)</th>
+                    <th class="text-end">Tahmini Kâr (TL)</th>
+                    <th style="width: 90px;" class="text-end no-print">Detay</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr class="@(item.EstimatedProfitTry is < 0 ? "table-danger" : "")">
+                            <td><span class="badge bg-secondary">@item.ProjectCode</span></td>
+                            <td>@item.CompanyName</td>
+                            <td class="text-end">@(item.OfferAmountTry?.ToString("N2") ?? "-")</td>
+                            <td class="text-end">@item.TotalIssueCostTry.ToString("N2")</td>
+                            <td class="text-end fw-bold">@(item.EstimatedProfitTry?.ToString("N2") ?? "-")</td>
+                            <td class="text-end no-print">
+                                <a class="btn btn-outline-primary btn-sm" href="@Url.Action("ProjectCostDetail", new { projectId = item.ProjectId })">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

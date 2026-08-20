@@ -1,0 +1,161 @@
+﻿@{
+    ViewData["Title"] = "Makina Raporları";
+    string activeTab = (string)ViewData["ActiveTab"]!;
+    var consumption = (IReadOnlyList<MachineConsumptionReportDto>)ViewBag.Consumption;
+    var cost = (IReadOnlyList<MachineCostReportDto>)ViewBag.Cost;
+    var usage = (IReadOnlyList<MachineUsageSummaryReportDto>)ViewBag.Usage;
+    var distribution = (IReadOnlyList<ProjectMachineDistributionReportDto>)ViewBag.Distribution;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <ul class="nav nav-tabs no-print mb-0" style="border-bottom: none;">
+        <li class="nav-item">
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "consumption" ? "active" : "")" href="@Url.Action("Index", new { tab = "consumption" })">Makina Bazlı Tüketim</a>
+        </li>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "cost" ? "active" : "")" href="@Url.Action("Index", new { tab = "cost" })">Makina Bazlı Maliyet</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "usage" ? "active" : "")" href="@Url.Action("Index", new { tab = "usage" })">Makina Kullanım Özeti</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "distribution" ? "active" : "")" href="@Url.Action("Index", new { tab = "distribution" })">Proje-Makina Dağılımı</a>
+        </li>
+    </ul>
+    <div class="d-flex gap-2 no-print">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf", new { tab = activeTab })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export", new { tab = activeTab })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+@if (activeTab == "cost")
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>Makina Kodu</th><th>Makina Adı</th><th>Proje Kodu</th><th class="text-end">Toplam Maliyet (TL)</th></tr>
+                </thead>
+                <tbody>
+                    @if (cost.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var i in cost)
+                        {
+                            <tr>
+                                <td><span class="badge bg-secondary">@i.MachineCode</span></td>
+                                <td>@i.MachineName</td>
+                                <td>@i.ProjectCode</td>
+                                <td class="text-end fw-bold">@i.TotalCostTry.ToString("N2")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else if (activeTab == "usage")
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>Makina Kodu</th><th>Makina Adı</th><th class="text-end">Proje Sayısı</th><th class="text-end">Toplam Miktar</th><th class="text-end">Toplam Maliyet (TL)</th></tr>
+                </thead>
+                <tbody>
+                    @if (usage.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var i in usage)
+                        {
+                            <tr>
+                                <td><span class="badge bg-secondary">@i.MachineCode</span></td>
+                                <td>@i.MachineName</td>
+                                <td class="text-end">@i.ProjectCount</td>
+                                <td class="text-end">@i.TotalQuantity.ToString("N2")</td>
+                                <td class="text-end fw-bold">@i.TotalCostTry.ToString("N2")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else if (activeTab == "distribution")
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>Proje Kodu</th><th>Makina Kodu</th><th>Makina Adı</th><th>Atama Tarihi</th></tr>
+                </thead>
+                <tbody>
+                    @if (distribution.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var i in distribution)
+                        {
+                            <tr>
+                                <td>@i.ProjectCode</td>
+                                <td><span class="badge bg-secondary">@i.MachineCode</span></td>
+                                <td>@i.MachineName</td>
+                                <td>@i.AssignedAt.ToString("dd.MM.yyyy")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>Makina Kodu</th><th>Makina Adı</th><th>Ürün Kodu</th><th>Ürün Adı</th><th class="text-end">Miktar</th></tr>
+                </thead>
+                <tbody>
+                    @if (consumption.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var i in consumption)
+                        {
+                            <tr>
+                                <td><span class="badge bg-secondary">@i.MachineCode</span></td>
+                                <td>@i.MachineName</td>
+                                <td>@i.ProductCode</td>
+                                <td>@i.ProductName</td>
+                                <td class="text-end fw-bold">@i.Quantity.ToString("N2")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

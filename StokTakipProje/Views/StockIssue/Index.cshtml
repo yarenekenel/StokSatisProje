@@ -1,0 +1,335 @@
+﻿@model IReadOnlyList<StockIssueListDto>
+@{
+    ViewData["Title"] = "Stok Çıkışı";
+    var projects = (IReadOnlyList<ProjectListDto>)ViewBag.Projects;
+    var products = (IReadOnlyList<ProductLookupDto>)ViewBag.Products;
+}
+<div class="mb-2">
+    <input type="text" id="stockIssueSearchInput" class="form-control form-control-sm" placeholder="Proje, makina veya ürüne göre ara...">
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <button type="button" class="btn btn-primary btn-sm" onclick="openIssueModal()">
+        <i class="bi bi-plus-lg"></i> Yeni Stok Çıkışı
+    </button>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf")">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export")">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Proje</th>
+                    <th>Makina</th>
+                    <th>Ürün</th>
+                    <th>Miktar</th>
+                    <th>Birim Fiyat (TL)</th>
+                    <th>Tutar (TL)</th>
+                    <th>Tarih</th>
+                </tr>
+            </thead>
+            <tbody id="stockIssueTableBody">
+                    @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr data-search-row data-search-text="@($"{item.ProjectCode} {item.MachineCode} {item.MachineName} {item.ProductCode} {item.ProductName}".ToLower())">
+                            <td>@item.ProjectCode</td>
+                            <td>@item.MachineCode - @item.MachineName</td>
+                            <td>@item.ProductCode - @item.ProductName</td>
+                            <td>@item.Quantity.ToString("N2")</td>
+                            <td>@item.UnitPrice.ToString("N2")</td>
+                            <td>@item.AmountTry.ToString("N2")</td>
+                            <td>@item.Date.ToString("dd.MM.yyyy")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Stok Çıkışı Modal -->
+<div class="modal fade" id="issueModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yeni Stok Çıkışı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Proje</label>
+                        <select id="issueProjectId" class="form-select" onchange="loadMachines()">
+                            <option value="">Seçiniz</option>
+                            @foreach (var p in projects)
+                            {
+                                <option value="@p.Id">@p.ProjectCode - @p.CompanyName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Makina</label>
+                        <select id="issueProjectMachineId" class="form-select">
+                            <option value="">Önce proje seçiniz</option>
+                        </select>
+                    </div>
+                </div>
+                <hr />
+                <div class="row">
+                    <div class="col-5 mb-3">
+                        <label class="form-label">Ürün</label>
+                        <select id="issueProductId" class="form-select" onchange="loadLots()">
+                            <option value="">Seçiniz</option>
+                            @foreach (var p in products)
+                            {
+                                <option value="@p.Id" data-unit="@p.UnitName">@p.Code - @p.Name (Kalan: @p.RemainingStock.ToString("N2") @p.UnitName)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <label class="form-label">Lot (opsiyonel, boşsa otomatik FIFO)</label>
+                        <select id="issueStockEntryId" class="form-select">
+                            <option value="">Otomatik (FIFO)</option>
+                        </select>
+                    </div>
+                    <div class="col-3 mb-3">
+                        <label class="form-label">Miktar</label>
+                        <input type="number" step="0.01" id="issueQuantity" class="form-control" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Tarih</label>
+                        <input type="date" id="issueDate" class="form-control" />
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <input type="text" id="issueDescription" class="form-control" maxlength="250" />
+                    </div>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm mb-3" onclick="addToCart()">
+                    <i class="bi bi-cart-plus"></i> Sepete Ekle
+                </button>
+
+                <div class="card">
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Ürün</th>
+                                    <th>Miktar</th>
+                                    <th>Lot</th>
+                                    <th style="width: 40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cartBody">
+                                <tr id="cartEmptyRow">
+                                    <td colspan="4" class="text-center text-muted py-3">Sepet boş.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary" onclick="saveAll()">
+                    <i class="bi bi-check2-circle"></i> Tümünü Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        enableLiveSearch('stockIssueSearchInput', 'stockIssueTableBody');
+        const issueModal = new bootstrap.Modal(document.getElementById('issueModal'));
+        let cart = [];
+
+        function todayIso() {
+            const d = new Date();
+            return d.toISOString().split('T')[0];
+        }
+
+        function openIssueModal() {
+            cart = [];
+            renderCart();
+            document.getElementById('issueProjectId').value = '';
+            document.getElementById('issueProjectMachineId').innerHTML = '<option value="">Önce proje seçiniz</option>';
+            document.getElementById('issueProductId').value = '';
+            document.getElementById('issueStockEntryId').innerHTML = '<option value="">Otomatik (FIFO)</option>';
+            document.getElementById('issueQuantity').value = '';
+            document.getElementById('issueDate').value = todayIso();
+            document.getElementById('issueDescription').value = '';
+            issueModal.show();
+        }
+
+        async function loadMachines() {
+            const projectId = document.getElementById('issueProjectId').value;
+            const select = document.getElementById('issueProjectMachineId');
+            select.innerHTML = '<option value="">Yükleniyor...</option>';
+
+            if (!projectId) {
+                select.innerHTML = '<option value="">Önce proje seçiniz</option>';
+                return;
+            }
+
+            const response = await fetch('@Url.Action("GetMachinesForProject", "StockIssue")?projectId=' + projectId);
+            const machines = await response.json();
+
+            if (machines.length === 0) {
+                select.innerHTML = '<option value="">Bu projeye atanmış makina yok</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">Seçiniz</option>' +
+                machines.map(m => `<option value="${m.id}">${m.text}</option>`).join('');
+        }
+
+        async function loadLots() {
+            const productId = document.getElementById('issueProductId').value;
+            const select = document.getElementById('issueStockEntryId');
+            select.innerHTML = '<option value="">Otomatik (FIFO)</option>';
+
+            if (!productId) return;
+
+            const response = await fetch('@Url.Action("GetLotsForProduct", "StockIssue")?productId=' + productId);
+            const lots = await response.json();
+
+            lots.forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l.stockEntryId;
+                opt.text = l.text;
+                select.appendChild(opt);
+            });
+        }
+
+        function addToCart() {
+            const projectMachineId = document.getElementById('issueProjectMachineId').value;
+            const productSelect = document.getElementById('issueProductId');
+            const productId = productSelect.value;
+            const productText = productSelect.options[productSelect.selectedIndex]?.text ?? '';
+            const stockEntryId = document.getElementById('issueStockEntryId').value;
+            const stockEntryText = document.getElementById('issueStockEntryId').selectedOptions[0]?.text ?? 'Otomatik (FIFO)';
+            const quantity = parseFloat(document.getElementById('issueQuantity').value);
+            const date = document.getElementById('issueDate').value;
+            const description = document.getElementById('issueDescription').value;
+
+            if (!projectMachineId) {
+                Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen proje ve makina seçiniz.' });
+                return;
+            }
+            if (!productId) {
+                Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen ürün seçiniz.' });
+                return;
+            }
+            if (!quantity || quantity <= 0) {
+                Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen geçerli bir miktar giriniz.' });
+                return;
+            }
+            if (!date) {
+                Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen tarih seçiniz.' });
+                return;
+            }
+
+            cart.push({
+                projectMachineId, productId, productText,
+                stockEntryId: stockEntryId || null, stockEntryText,
+                quantity, date, description
+            });
+
+            renderCart();
+
+            document.getElementById('issueProductId').value = '';
+            document.getElementById('issueStockEntryId').innerHTML = '<option value="">Otomatik (FIFO)</option>';
+            document.getElementById('issueQuantity').value = '';
+            document.getElementById('issueDescription').value = '';
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            renderCart();
+        }
+
+        function renderCart() {
+            const body = document.getElementById('cartBody');
+            if (cart.length === 0) {
+                body.innerHTML = '<tr id="cartEmptyRow"><td colspan="4" class="text-center text-muted py-3">Sepet boş.</td></tr>';
+                return;
+            }
+            body.innerHTML = cart.map((item, index) => `
+                <tr>
+                    <td>${item.productText}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.stockEntryText}</td>
+                    <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFromCart(${index})"><i class="bi bi-x"></i></button></td>
+                </tr>
+            `).join('');
+        }
+
+        async function saveAll() {
+            if (cart.length === 0) {
+                Swal.fire({ icon: 'warning', title: 'Sepet Boş', text: 'Kaydetmeden önce sepete en az bir kalem ekleyin.' });
+                return;
+            }
+
+            let successCount = 0;
+            let errorMessages = [];
+
+            for (const item of cart) {
+                const formData = new URLSearchParams();
+                formData.append('projectMachineId', item.projectMachineId);
+                formData.append('productId', item.productId);
+                formData.append('quantity', item.quantity);
+                formData.append('date', item.date);
+                if (item.description) formData.append('description', item.description);
+                if (item.stockEntryId) formData.append('stockEntryId', item.stockEntryId);
+
+                const response = await fetch('@Url.Action("CreateLine", "StockIssue")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    successCount++;
+                } else {
+                    errorMessages.push(`${item.productText}: ${result.message}`);
+                }
+            }
+
+            if (errorMessages.length === 0) {
+                Swal.fire({ icon: 'success', title: 'Başarılı', text: `${successCount} kalem kaydedildi.` })
+                    .then(() => location.reload());
+            } else {
+                Swal.fire({
+                    icon: successCount > 0 ? 'warning' : 'error',
+                    title: successCount > 0 ? 'Kısmi Başarı' : 'Hata',
+                    html: `${successCount} kalem kaydedildi.<br/><br/>Hatalar:<br/>${errorMessages.join('<br/>')}`
+                }).then(() => { if (successCount > 0) location.reload(); });
+            }
+        }
+    </script>
+}

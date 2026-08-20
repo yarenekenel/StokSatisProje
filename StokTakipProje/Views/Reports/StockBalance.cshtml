@@ -1,0 +1,115 @@
+﻿@model IReadOnlyList<StockBalanceDto>
+@{
+    ViewData["Title"] = "Stok Bakiye Raporu";
+    bool belowCriticalOnly = (bool)ViewData["BelowCriticalOnly"]!;
+    int? selectedProductId = ViewData["ProductId"] as int?;
+    int? selectedCompanyId = ViewData["CompanyId"] as int?;
+    var products = (IReadOnlyList<ProductLookupDto>)ViewBag.Products;
+    var companies = (IReadOnlyList<Company>)ViewBag.Companies;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportStockBalancePdf", new { productId = selectedProductId, companyId = selectedCompanyId, belowCriticalOnly })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("ExportStockBalance", new { productId = selectedProductId, companyId = selectedCompanyId, belowCriticalOnly })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3 no-print">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small mb-1">Ürün</label>
+                <select name="productId" class="form-select form-select-sm">
+                    <option value="">Tümü</option>
+                    @foreach (var p in products)
+                    {
+                        if (selectedProductId == p.Id)
+                        {
+                            <option value="@p.Id" selected>@p.Code - @p.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@p.Id">@p.Code - @p.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small mb-1">Firma</label>
+                <select name="companyId" class="form-select form-select-sm">
+                    <option value="">Tümü</option>
+                    @foreach (var c in companies)
+                    {
+                        if (selectedCompanyId == c.Id)
+                        {
+                            <option value="@c.Id" selected>@c.CompanyName</option>
+                        }
+                        else
+                        {
+                            <option value="@c.Id">@c.CompanyName</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 form-check mt-4">
+                <input type="checkbox" name="belowCriticalOnly" value="true" class="form-check-input" id="belowCriticalCheck" @(belowCriticalOnly ? "checked" : "") />
+                <label class="form-check-label small" for="belowCriticalCheck">Sadece kritik altı</label>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-search"></i> Ara
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Ürün Kodu</th>
+                    <th>Ürün Adı</th>
+                    <th>Birim</th>
+                    <th class="text-end">Toplam Giriş</th>
+                    <th class="text-end">Toplam Çıkış</th>
+                    <th class="text-end">Kalan Stok</th>
+                    <th class="text-end">Kritik Seviye</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        bool isCritical = item.CriticalStockLevel.HasValue && item.RemainingStock < item.CriticalStockLevel;
+                        <tr class="@(isCritical ? "table-danger" : "")">
+                            <td><span class="badge bg-secondary">@item.ProductCode</span></td>
+                            <td>@item.ProductName</td>
+                            <td>@item.Unit</td>
+                            <td class="text-end">@item.TotalIn.ToString("N2")</td>
+                            <td class="text-end">@item.TotalOut.ToString("N2")</td>
+                            <td class="text-end fw-bold">@item.RemainingStock.ToString("N2")</td>
+                            <td class="text-end">@(item.CriticalStockLevel?.ToString("N2") ?? "-")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

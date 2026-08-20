@@ -1,0 +1,194 @@
+﻿@model IReadOnlyList<Company>
+@{
+    ViewData["Title"] = "Firmalar";
+    bool? currentFilter = ViewData["CurrentFilter"] as bool?;
+}
+<div class="mb-2">
+    <input type="text" id="companySearchInput" class="form-control form-control-sm" placeholder="Firma adı veya vergi no'ya göre ara...">
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <a class="btn @(currentFilter == null ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = (bool?)null })">Tümü</a>
+            <a class="btn @(currentFilter == true ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = true })">Aktif</a>
+            <a class="btn @(currentFilter == false ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = false })">Pasif</a>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+            <i class="bi bi-plus-lg"></i> Yeni Firma Ekle
+        </button>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Firma Adı</th>
+                    <th>Vergi No</th>
+                    <th>Telefon</th>
+                    <th>Email</th>
+                    <th style="width: 90px;">Durum</th>
+                    <th style="width: 160px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="companyTableBody">
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                     foreach (var item in Model)
+                        {
+                        <tr data-search-row data-search-text="@($"{item.CompanyName} {item.TaxNumber}".ToLower())">
+                                <td>@item.CompanyName</td>
+                            <td>@(item.TaxNumber ?? "-")</td>
+                            <td>@(item.Phone ?? "-")</td>
+                            <td>@(item.Email ?? "-")</td>
+                            <td>
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge bg-success">Aktif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Pasif</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick='openEditModal(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.CompanyName)), @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.TaxNumber)), @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Phone)), @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Email)), @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Address)))'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                @if (item.IsActive)
+                                {
+                                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="confirmToggle(@item.Id, '@item.CompanyName', false)">
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick="confirmToggle(@item.Id, '@item.CompanyName', true)">
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="companyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="companyForm" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="companyModalTitle">Yeni Firma Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="companyId" />
+                    <div class="mb-3">
+                        <label class="form-label">Firma Adı</label>
+                        <input type="text" name="companyName" id="companyName" class="form-control" required maxlength="150" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vergi No</label>
+                        <input type="text" name="taxNumber" id="companyTaxNumber" class="form-control" maxlength="20" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Telefon</label>
+                        <input type="text" name="phone" id="companyPhone" class="form-control" maxlength="20" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" id="companyEmail" class="form-control" maxlength="100" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Adres</label>
+                        <textarea name="address" id="companyAddress" class="form-control" rows="2" maxlength="250"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="toggleForm" method="post" style="display:none;">
+    <input type="hidden" name="isActive" id="toggleIsActive" />
+</form>
+
+@section Scripts {
+    <script>
+        enableLiveSearch('companySearchInput', 'companyTableBody');
+        const companyModal = new bootstrap.Modal(document.getElementById('companyModal'));
+
+        function openCreateModal() {
+            document.getElementById('companyModalTitle').innerText = 'Yeni Firma Ekle';
+            document.getElementById('companyForm').action = '@Url.Action("Create", "Company")';
+            document.getElementById('companyId').value = '';
+            document.getElementById('companyName').value = '';
+            document.getElementById('companyTaxNumber').value = '';
+            document.getElementById('companyPhone').value = '';
+            document.getElementById('companyEmail').value = '';
+            document.getElementById('companyAddress').value = '';
+            companyModal.show();
+        }
+
+        function openEditModal(id, companyName, taxNumber, phone, email, address) {
+            document.getElementById('companyModalTitle').innerText = 'Firmayı Düzenle';
+            document.getElementById('companyForm').action = '@Url.Action("Edit", "Company")';
+            document.getElementById('companyId').value = id;
+            document.getElementById('companyName').value = companyName ?? '';
+            document.getElementById('companyTaxNumber').value = taxNumber ?? '';
+            document.getElementById('companyPhone').value = phone ?? '';
+            document.getElementById('companyEmail').value = email ?? '';
+            document.getElementById('companyAddress').value = address ?? '';
+            companyModal.show();
+        }
+
+        function confirmToggle(id, name, makeActive) {
+            const actionText = makeActive ? 'aktif' : 'pasif';
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${name}" firması ${actionText} hale getirilecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, devam et',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: makeActive ? '#2f6f4f' : '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('toggleForm');
+                    form.action = '@Url.Action("ToggleActive", "Company")/' + id;
+                    document.getElementById('toggleIsActive').value = makeActive;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,234 @@
+﻿@model IReadOnlyList<ProductListDto>
+@{
+    ViewData["Title"] = "Ürünler";
+    bool? currentFilter = ViewData["CurrentFilter"] as bool?;
+    var productTypes = (IReadOnlyList<ProductType>)ViewBag.ProductTypes;
+    var units = (IReadOnlyList<Unit>)ViewBag.Units;
+    var stockTypes = (IReadOnlyList<StockType>)ViewBag.StockTypes;
+}
+
+<div class="mb-2">
+    <input type="text" id="productSearchInput" class="form-control form-control-sm" placeholder="Ürün kodu veya adına göre ara...">
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <a class="btn @(currentFilter == null ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = (bool?)null })">Tümü</a>
+            <a class="btn @(currentFilter == true ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = true })">Aktif</a>
+            <a class="btn @(currentFilter == false ? "btn-primary" : "btn-outline-secondary")" href="@Url.Action("Index", new { isActive = false })">Pasif</a>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+            <i class="bi bi-plus-lg"></i> Yeni Ürün Ekle
+        </button>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export", new { isActive = currentFilter })">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="mb-2">
+    <input type="text" id="productSearchInput" class="form-control form-control-sm" placeholder="Ürün kodu veya adına göre ara...">
+</div>
+
+<div class="card">
+<div class="card">
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 110px;">Kod</th>
+                    <th>Ad</th>
+                    <th>Tip</th>
+                    <th>Birim</th>
+                    <th>Stok Tipi</th>
+                    <th style="width: 90px;">Durum</th>
+                    <th style="width: 160px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="productTableBody">
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Kayıt bulunamadı.</td>
+                    </tr>
+                }
+                else
+                {
+                   foreach (var item in Model)
+                            {
+                             <tr data-search-row data-search-text="@($"{item.Code} {item.Name}".ToLower())">
+                            <td><span class="badge bg-secondary">@item.Code</span></td>
+                            <td>@item.Name</td>
+                            <td>@item.ProductTypeName</td>
+                            <td>@item.UnitName</td>
+                            <td>@item.StockTypeName</td>
+                            <td>
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge bg-success">Aktif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Pasif</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openEditModal(@item.Id)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                @if (item.IsActive)
+                                {
+                                    <button type="button" class="btn btn-outline-warning btn-sm" onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Name)), false)'>
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Name)), true)'>
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="productForm" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productModalTitle">Yeni Ürün Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="productId" />
+                    <div class="mb-3">
+                        <label class="form-label">Ürün Adı</label>
+                        <input type="text" name="name" id="productName" class="form-control" required maxlength="150" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ürün Tipi</label>
+                        <select name="productTypeId" id="productProductTypeId" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            @foreach (var pt in productTypes)
+                            {
+                                <option value="@pt.Id">@pt.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Birim</label>
+                        <select name="unitId" id="productUnitId" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            @foreach (var u in units)
+                            {
+                                <option value="@u.Id">@u.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stok Tipi</label>
+                        <select name="stockTypeId" id="productStockTypeId" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            @foreach (var st in stockTypes)
+                            {
+                                <option value="@st.Id">@st.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Muhasebe Stok Kodu</label>
+                        <input type="text" name="accountingStockCode" id="productAccountingStockCode" class="form-control" maxlength="50" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kritik Stok Seviyesi</label>
+                        <input type="number" step="0.01" name="criticalStockLevel" id="productCriticalStockLevel" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <textarea name="description" id="productDescription" class="form-control" rows="2" maxlength="250"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="toggleForm" method="post" style="display:none;">
+    <input type="hidden" name="isActive" id="toggleIsActive" />
+</form>
+enableLiveSearch('productSearchInput', 'productTableBody');
+@section Scripts {
+    <script>
+        enableLiveSearch('productSearchInput', 'productTableBody');
+        const productModal = new bootstrap.Modal(document.getElementById('productModal'));
+           
+        function openCreateModal() {
+            document.getElementById('productModalTitle').innerText = 'Yeni Ürün Ekle';
+            document.getElementById('productForm').action = '@Url.Action("Create", "Product")';
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            productModal.show();
+        }
+
+        async function openEditModal(id) {
+            const response = await fetch('@Url.Action("GetDetail", "Product")?id=' + id);
+            if (!response.ok) {
+                Swal.fire({ icon: 'error', title: 'Hata', text: 'Ürün bilgisi alınamadı.' });
+                return;
+            }
+            const product = await response.json();
+
+            document.getElementById('productModalTitle').innerText = 'Ürünü Düzenle';
+            document.getElementById('productForm').action = '@Url.Action("Edit", "Product")';
+            document.getElementById('productId').value = product.id;
+            document.getElementById('productName').value = product.name;
+            document.getElementById('productProductTypeId').value = product.productTypeId;
+            document.getElementById('productUnitId').value = product.unitId;
+            document.getElementById('productStockTypeId').value = product.stockTypeId;
+            document.getElementById('productAccountingStockCode').value = product.accountingStockCode ?? '';
+            document.getElementById('productCriticalStockLevel').value = product.criticalStockLevel ?? '';
+            document.getElementById('productDescription').value = product.description ?? '';
+            productModal.show();
+        }
+
+        function confirmToggle(id, name, makeActive) {
+            const actionText = makeActive ? 'aktif' : 'pasif';
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${name}" ürünü ${actionText} hale getirilecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, devam et',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: makeActive ? '#2f6f4f' : '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('toggleForm');
+                    form.action = '@Url.Action("ToggleActive", "Product")/' + id;
+                    document.getElementById('toggleIsActive').value = makeActive;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

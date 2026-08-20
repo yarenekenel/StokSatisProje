@@ -1,0 +1,225 @@
+﻿@model IReadOnlyList<User>
+@{
+    ViewData["Title"] = "Kullanıcı Yönetimi";
+    var roles = (IReadOnlyList<Role>)ViewBag.Roles;
+}
+
+<h5 class="mb-2">Kullanıcı Yönetimi</h5>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+        <i class="bi bi-plus-lg"></i> Yeni Kullanıcı Ekle
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Kullanıcı Adı</th>
+                    <th>Ad Soyad</th>
+                    <th>Rol</th>
+                    <th style="width: 90px;">Durum</th>
+                    <th style="width: 160px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Henüz kullanıcı eklenmemiş.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Username</td>
+                            <td>@(item.FullName ?? "-")</td>
+                            <td>@(item.RoleName ?? "-")</td>
+                            <td>
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge bg-success">Aktif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Pasif</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick='openEditModal(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.FullName)), @(item.RoleId?.ToString() ?? "null"))'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                @if (item.IsActive)
+                                {
+                                    <button type="button" class="btn btn-outline-warning btn-sm" onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Username)), false)'>
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick='confirmToggle(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Username)), true)'>
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                }
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick='confirmDelete(@item.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Username)))'>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Yeni Ekle Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="createUserForm" method="post" action="@Url.Action("Create", "User")">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Kullanıcı Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Kullanıcı Adı</label>
+                        <input type="text" name="username" class="form-control" required maxlength="50" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ad Soyad</label>
+                        <input type="text" name="fullName" class="form-control" maxlength="100" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol</label>
+                        <select name="roleId" class="form-select">
+                            <option value="">Rol Yok</option>
+                            @foreach (var r in roles)
+                            {
+                                <option value="@r.Id">@r.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Şifre</label>
+                        <input type="password" name="password" class="form-control" required minlength="6" />
+                        <div class="form-text">En az 6 karakter.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Düzenle Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="editUserForm" method="post" action="@Url.Action("Edit", "User")">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Kullanıcıyı Düzenle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="editUserId" />
+                    <div class="mb-3">
+                        <label class="form-label">Ad Soyad</label>
+                        <input type="text" name="fullName" id="editUserFullName" class="form-control" maxlength="100" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol</label>
+                        <select name="roleId" id="editUserRoleId" class="form-select">
+                            <option value="">Rol Yok</option>
+                            @foreach (var r in roles)
+                            {
+                                <option value="@r.Id">@r.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Yeni Şifre</label>
+                        <input type="password" name="newPassword" class="form-control" minlength="6" />
+                        <div class="form-text">Değiştirmek istemiyorsan boş bırak.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="toggleForm" method="post" style="display:none;">
+    <input type="hidden" name="isActive" id="toggleIsActive" />
+</form>
+
+<form id="deleteForm" method="post" style="display:none;"></form>
+
+@section Scripts {
+    <script>
+        const createUserModal = new bootstrap.Modal(document.getElementById('createUserModal'));
+        const editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+
+        function openCreateModal() {
+            document.getElementById('createUserForm').reset();
+            createUserModal.show();
+        }
+
+        function openEditModal(id, fullName, roleId) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserFullName').value = fullName ?? '';
+            document.getElementById('editUserRoleId').value = roleId ?? '';
+            editUserModal.show();
+        }
+
+        function confirmToggle(id, username, makeActive) {
+            const actionText = makeActive ? 'aktif' : 'pasif';
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${username}" kullanıcısı ${actionText} hale getirilecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, devam et',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: makeActive ? '#2f6f4f' : '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('toggleForm');
+                    form.action = '@Url.Action("ToggleActive", "User")/' + id;
+                    document.getElementById('toggleIsActive').value = makeActive;
+                    form.submit();
+                }
+            });
+        }
+
+        function confirmDelete(id, username) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${username}" kullanıcısı kalıcı olarak silinecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, sil',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('deleteForm');
+                    form.action = '@Url.Action("Delete", "User")/' + id;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

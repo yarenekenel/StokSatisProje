@@ -1,0 +1,200 @@
+﻿@model DashboardSummaryDto
+@using StokTakip.Core.Enum
+@{
+    ViewData["Title"] = "Dashboard";
+    var topProducts = (IReadOnlyList<ProductStockChartDto>)ViewBag.TopProducts;
+    var activities = (IReadOnlyList<RecentActivityDto>)ViewBag.Activities;
+    var distribution = (IReadOnlyList<StockTypeDistributionDto>)ViewBag.Distribution;
+    var criticalStock = (IReadOnlyList<CriticalStockDto>)ViewBag.CriticalStock;
+}
+
+<div class="dashboard-page">
+
+    <div class="row g-2 mb-2">
+        <div class="col-md-3 col-6">
+            <div class="kpi-card kpi-purple">
+                <div class="kpi-label">Aktif Ürün</div>
+                <div class="kpi-value">@Model.ActiveProductCount</div>
+                <i class="bi bi-box-seam kpi-icon"></i>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="kpi-card kpi-green">
+                <div class="kpi-label">Aktif Firma</div>
+                <div class="kpi-value">@Model.ActiveCompanyCount</div>
+                <i class="bi bi-building kpi-icon"></i>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="kpi-card kpi-amber">
+                <div class="kpi-label">Aktif Proje</div>
+                <div class="kpi-value">@Model.ActiveProjectCount</div>
+                <i class="bi bi-kanban kpi-icon"></i>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="kpi-card kpi-blue">
+                <div class="kpi-label">Aktif Makina</div>
+                <div class="kpi-value">@Model.ActiveMachineCount</div>
+                <i class="bi bi-gear-wide-connected kpi-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-2">
+        <div class="col-md-6">
+            <div class="kpi-card kpi-teal d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="kpi-label">Toplam Kalan Stok</div>
+                    <div class="kpi-value">@Model.TotalRemainingStock.ToString("N0")</div>
+                </div>
+                <i class="bi bi-boxes kpi-icon-lg"></i>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="kpi-card @(Model.BelowCriticalStockCount > 0 ? "kpi-red" : "kpi-gray") d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="kpi-label">Kritik Seviyenin Altında Ürün</div>
+                    <div class="kpi-value">
+                        @Model.BelowCriticalStockCount
+                        @if (Model.BelowCriticalStockCount > 0)
+                        {
+                            <a href="@Url.Action("StockBalance", "Reports", new { belowCriticalOnly = true })" class="text-white ms-1"><i class="bi bi-arrow-up-right-circle"></i></a>
+                        }
+                    </div>
+                </div>
+                <i class="bi bi-exclamation-triangle kpi-icon-lg"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-2">
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3">
+                    <h6 class="mb-2 small text-uppercase text-muted">En Yüksek Stoklu Ürünler</h6>
+                    <canvas id="topProductsChart" style="max-height: 230px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3">
+                    <h6 class="mb-2 small text-uppercase text-muted">Stok Tipi Dağılımı</h6>
+                    <canvas id="stockTypeChart" style="max-height: 230px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3">
+                    <h6 class="mb-2 small text-uppercase text-muted">Son Hareketler</h6>
+                    @if (activities.Count == 0)
+                    {
+                        <div class="text-muted small">Henüz hareket yok.</div>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush" style="max-height: 230px; overflow-y: auto;">
+                            @foreach (var a in activities)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                                    <div class="small">
+                                        <span class="badge @(a.Type == StockMovementType.Entry ? "bg-success" : "bg-warning text-dark")" style="font-size: .65rem;">@(a.Type == StockMovementType.Entry ? "Giriş" : "Çıkış")</span>
+                                        <span class="ms-1">@a.ProductCode</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="small">@a.Quantity.ToString("N2")</div>
+                                        <div class="text-muted" style="font-size: .7rem;">@a.Date.ToString("dd.MM.yyyy")</div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-2 mt-1">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2 px-3">
+                    <h6 class="mb-2 small text-uppercase text-muted">
+                        <i class="bi bi-exclamation-triangle-fill text-danger"></i> Kritik Stok Uyarıları
+                    </h6>
+                    @if (criticalStock.Count == 0)
+                    {
+                        <div class="text-muted small">Kritik seviyenin altında ürün bulunmuyor.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive" style="max-height: 260px; overflow-y: auto;">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Ürün</th>
+                                        <th>Kalan</th>
+                                        <th>Kritik Seviye</th>
+                                        <th>Birim</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var c in criticalStock)
+                                    {
+                                        <tr>
+                                            <td>@c.ProductCode - @c.ProductName</td>
+                                            <td class="text-danger fw-bold">@c.RemainingStock.ToString("N2")</td>
+                                            <td>@c.CriticalStockLevel.ToString("N2")</td>
+                                            <td>@c.UnitName</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+        new Chart(document.getElementById('topProductsChart'), {
+            type: 'bar',
+            data: {
+                labels: [@Html.Raw(string.Join(",", topProducts.Select(p => $"'{p.ProductCode}'")))],
+                datasets: [{
+                    label: 'Kalan Stok',
+                    data: [@string.Join(",", topProducts.Select(p => p.RemainingStock.ToString(System.Globalization.CultureInfo.InvariantCulture)))],
+                    backgroundColor: '#2f6f4f'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        new Chart(document.getElementById('stockTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: [@Html.Raw(string.Join(",", distribution.Select(d => $"'{d.StockTypeName}'")))],
+                datasets: [{
+                    data: [@string.Join(",", distribution.Select(d => d.TotalRemainingStock.ToString(System.Globalization.CultureInfo.InvariantCulture)))],
+                    backgroundColor: ['#2f6f4f', '#4a90a4', '#e0a94a', '#c0745a', '#7a5c9e', '#5c8a5c']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
+            }
+        });
+    </script>
+}

@@ -1,0 +1,140 @@
+﻿@model IReadOnlyList<ProductType>
+@{
+    ViewData["Title"] = "Ürün Tipleri";
+}
+
+<div class="mb-2">
+    <input type="text" id="productTypeSearchInput" class="form-control form-control-sm" placeholder="Ürün tipi adına göre ara...">
+</div>
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+        <i class="bi bi-plus-lg"></i> Yeni Ürün Tipi Ekle
+    </button>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer"></i> Yazdır
+        </button>
+        <a class="btn btn-outline-danger btn-sm" href="@Url.Action("ExportPdf")">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="@Url.Action("Export")">
+            <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="card">
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Ad</th>
+                    <th style="width: 140px;">Kod Ön Eki</th>
+                    <th style="width: 140px;" class="text-end">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="productTypeTableBody">
+                @if (Model is null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-4">Henüz ürün tipi eklenmemiş.</td>
+                    </tr>
+                }
+                else
+                {
+                foreach (var item in Model)
+                {
+                 <tr data-search-row data-search-text="@($"{item.Name} {item.CodePrefix}".ToLower())">
+                                <td>@item.Name</td>
+                            <td><span class="badge bg-secondary">@item.CodePrefix</span></td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="openEditModal(@item.Id, '@item.Name', '@item.CodePrefix')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="confirmDelete(@item.Id, '@item.Name')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="productTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="productTypeForm" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productTypeModalTitle">Yeni Ürün Tipi Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="productTypeId" />
+                    <div class="mb-3">
+                        <label class="form-label">Ad</label>
+                        <input type="text" name="name" id="productTypeName" class="form-control" required maxlength="50" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kod Ön Eki</label>
+                        <input type="text" name="codePrefix" id="productTypeCodePrefix" class="form-control" required maxlength="5" style="text-transform: uppercase;" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="deleteForm" method="post" style="display:none;"></form>
+
+@section Scripts {
+    <script>
+        enableLiveSearch('productTypeSearchInput', 'productTypeTableBody');
+        const productTypeModal = new bootstrap.Modal(document.getElementById('productTypeModal'));
+
+        function openCreateModal() {
+            document.getElementById('productTypeModalTitle').innerText = 'Yeni Ürün Tipi Ekle';
+            document.getElementById('productTypeForm').action = '@Url.Action("Create", "ProductType")';
+            document.getElementById('productTypeId').value = '';
+            document.getElementById('productTypeName').value = '';
+            document.getElementById('productTypeCodePrefix').value = '';
+            productTypeModal.show();
+        }
+
+        function openEditModal(id, name, codePrefix) {
+            document.getElementById('productTypeModalTitle').innerText = 'Ürün Tipini Düzenle';
+            document.getElementById('productTypeForm').action = '@Url.Action("Edit", "ProductType")';
+            document.getElementById('productTypeId').value = id;
+            document.getElementById('productTypeName').value = name;
+            document.getElementById('productTypeCodePrefix').value = codePrefix;
+            productTypeModal.show();
+        }
+
+        function confirmDelete(id, name) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Emin misiniz?',
+                text: `"${name}" ürün tipi silinecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Evet, sil',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#c0392b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('deleteForm');
+                    form.action = '@Url.Action("Delete", "ProductType")/' + id;
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}
